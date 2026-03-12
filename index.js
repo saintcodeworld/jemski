@@ -1,15 +1,8 @@
 const canvas = document.querySelector('canvas')
 const c = canvas.getContext('2d')
 
-// Fullscreen canvas
-canvas.width = window.innerWidth
-canvas.height = window.innerHeight
-
-// Resize canvas on window resize
-window.addEventListener('resize', () => {
-  canvas.width = window.innerWidth
-  canvas.height = window.innerHeight
-})
+canvas.width = 1024
+canvas.height = 576
 
 c.fillRect(0, 0, canvas.width, canvas.height)
 
