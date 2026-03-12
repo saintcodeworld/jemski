@@ -60,6 +60,22 @@ io.on('connection', (socket) => {
   // Send current lobby list on connect
   broadcastLobbies()
 
+  // ── Request Lobby List ────────────────────────────────────
+  socket.on('lobby:requestList', () => {
+    const list = []
+    for (const [id, lobby] of lobbies) {
+      list.push({
+        id,
+        name: lobby.name,
+        hostName: lobby.hostName,
+        players: lobby.players.length,
+        maxPlayers: 2,
+        status: lobby.status
+      })
+    }
+    socket.emit('lobbies:list', list)
+  })
+
   // ── Create Lobby ──────────────────────────────────────────
   socket.on('lobby:create', ({ playerName, characterId, backgroundId }) => {
     // Remove from any existing lobby first

@@ -1034,6 +1034,8 @@
       document.getElementById('usernameScreen').style.display = 'none'
       document.getElementById('introScreen').style.display = 'flex'
       gameState = 'intro'
+      // Initialize socket early so it's connected before reaching lobby screen
+      if (typeof initSocket === 'function') initSocket()
     }
 
     async function openLeaderboard() {

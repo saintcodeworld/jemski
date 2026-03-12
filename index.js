@@ -112,6 +112,8 @@ function initSocket() {
 
   socket.on('connect', () => {
     console.log('[Socket] Connected:', socket.id)
+    // Request lobby list immediately after connecting
+    socket.emit('lobby:requestList')
   })
 
   socket.on('disconnect', () => {
@@ -741,7 +743,6 @@ window.addEventListener('keydown', (event) => {
       document.getElementById('introScreen').style.display = 'none'
       document.getElementById('lobbyScreen').style.display = 'flex'
       gameState = 'lobby'
-      initSocket()
     }
     return
   }
