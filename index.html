@@ -663,21 +663,38 @@
       </div>
       <div class="intro-right">
         <div class="intro-title">&#9760; DEATH WARS &#9760;</div>
-        <div class="intro-subtitle">— choose your champion —</div>
+        <div class="intro-subtitle">— multiplayer death match —</div>
         <div class="intro-controls">
           <div class="ctrl-row"><span class="ctrl-key">A &nbsp;/&nbsp; D</span> Move</div>
           <div class="ctrl-row"><span class="ctrl-key">W</span> Jump</div>
           <div class="ctrl-row"><span class="ctrl-key">SPACE</span> Attack</div>
-          <div class="ctrl-row"><span class="ctrl-key">ENTER</span> Confirm selection</div>
         </div>
         <div class="intro-press">PRESS ENTER TO PLAY</div>
         <button class="intro-lb-btn" onclick="openLeaderboard()">LEADERBOARD</button>
       </div>
     </div>
 
-    <!-- Character Select -->
+    <!-- Lobby Browser -->
+    <div id="lobbyScreen" style="display:none">
+      <div class="select-title">— BATTLE LOBBIES —</div>
+
+      <div class="lobby-header">
+        <button class="wallet-btn primary" onclick="showCreateLobby()">CREATE LOBBY</button>
+        <button class="wallet-btn" onclick="refreshLobbies()">REFRESH</button>
+      </div>
+
+      <div class="lobby-list" id="lobbyList">
+        <div class="lobby-empty">No lobbies available — create one!</div>
+      </div>
+
+      <div style="font-size:6px; color:#444; letter-spacing:1px; margin-top:8px">
+        Waiting for opponents...
+      </div>
+    </div>
+
+    <!-- Character Select (used before creating/joining) -->
     <div id="selectScreen" style="display:none">
-      <div class="select-title">— choose your fighter —</div>
+      <div class="select-title" id="selectTitle">— choose your fighter —</div>
 
       <div class="select-content-row">
         <div class="select-left">
@@ -693,15 +710,39 @@
         </div>
       </div>
 
-      <!-- hidden, kept for P2 logic -->
       <div id="p2Status" style="display:none"></div>
 
       <div class="controls-hint">
         <div class="hint-block">
           <div class="hint-label p1">CONTROLS</div>
-          <div class="hint-keys">A / D &mdash; navigate &nbsp;&middot;&nbsp; ENTER &mdash; confirm &nbsp;&middot;&nbsp; W / S &mdash; cycle stage</div>
+          <div class="hint-keys">Click character to select &middot; Click stage to choose &middot; Press CONFIRM</div>
         </div>
       </div>
+
+      <button class="wallet-btn primary" id="confirmSelectBtn" onclick="confirmSelection()" style="margin-top:8px">CONFIRM &amp; CREATE LOBBY</button>
+      <button class="wallet-btn" onclick="backToLobbyBrowser()" style="margin-top:4px">BACK</button>
+    </div>
+
+    <!-- Waiting Room (after creating/joining a lobby) -->
+    <div id="waitingRoom" style="display:none">
+      <div class="select-title">— WAITING FOR OPPONENT —</div>
+      <div class="lobby-code">LOBBY CODE: <span id="lobbyCodeDisplay">------</span></div>
+
+      <div class="waiting-players">
+        <div class="waiting-player-card filled" id="waitP1Card">
+          <img id="waitP1Img" src="" alt="" />
+          <div class="waiting-player-name" id="waitP1Name">---</div>
+          <div class="waiting-player-char" id="waitP1Char">---</div>
+        </div>
+
+        <div class="waiting-vs">VS</div>
+
+        <div class="waiting-player-card" id="waitP2Card">
+          <div class="waiting-empty">WAITING...</div>
+        </div>
+      </div>
+
+      <button class="wallet-btn" onclick="leaveLobby()">LEAVE LOBBY</button>
     </div>
 
     <!-- Countdown -->
@@ -716,13 +757,14 @@
   </div>
 
   <!-- Rematch -->
-  <button id="rematchBtn" onclick="resetGame()">REMATCH</button>
+  <button id="rematchBtn" onclick="requestRematch()">REMATCH</button>
 
   <audio id="gameSoundtrack" src="./audio/game-soundtrack.mp3" loop></audio>
 
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
   <script>
-    const SUPABASE_URL = 'https://oabxbnwlylwybyrivudq.supabase.co'
-    const SUPABASE_KEY = 'sb_publishable_gtVXMXEqX4f3jbxiKaOvOw_qJLLLi59'
+    let SUPABASE_URL = ''
+    let SUPABASE_KEY = ''
     let sb
 
     const _clickCtx = new (window.AudioContext || window.webkitAudioContext)()
@@ -744,6 +786,25 @@
       src.start()
     }
 
+    // Fetch config from server (keys from .env)
+    async function loadConfig() {
+      try {
+        const resp = await fetch('/api/config')
+        const cfg = await resp.json()
+        SUPABASE_URL = cfg.SUPABASE_URL
+        SUPABASE_KEY = cfg.SUPABASE_KEY
+      } catch(e) {
+        console.warn('Could not load config from server')
+      }
+    }
+
+    async function initSupabase() {
+      await loadConfig()
+      if (SUPABASE_URL && SUPABASE_KEY && window.supabase) {
+        try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY) } catch(e) {}
+      }
+    }
+
     async function connectWallet() {
       const statusEl = document.getElementById('walletStatus')
       const provider = window.phantom?.solana || window.solana
@@ -755,17 +816,23 @@
       try {
         const resp = await provider.connect()
         const addr = resp.publicKey.toString()
-        const { data } = await sb.from('players').select('username').eq('wallet_address', addr).maybeSingle()
-        if (data) {
-          walletAddress = addr
-          walletUsername = data.username
-          proceedToGame()
+        if (sb) {
+          const { data } = await sb.from('players').select('username').eq('wallet_address', addr).maybeSingle()
+          if (data) {
+            walletAddress = addr
+            walletUsername = data.username
+            proceedToGame()
+          } else {
+            walletAddress = addr
+            statusEl.textContent = ''
+            document.getElementById('walletScreen').style.display = 'none'
+            document.getElementById('usernameScreen').style.display = 'flex'
+            setTimeout(() => document.getElementById('usernameInput').focus(), 50)
+          }
         } else {
           walletAddress = addr
-          statusEl.textContent = ''
-          document.getElementById('walletScreen').style.display = 'none'
-          document.getElementById('usernameScreen').style.display = 'flex'
-          setTimeout(() => document.getElementById('usernameInput').focus(), 50)
+          walletUsername = addr.substring(0, 8)
+          proceedToGame()
         }
       } catch(e) {
         statusEl.textContent = 'Connection cancelled'
@@ -776,14 +843,16 @@
       const val = document.getElementById('usernameInput').value.trim()
       const errEl = document.getElementById('usernameError')
       if (val.length < 2 || val.length > 16) {
-        errEl.textContent = 'Name must be 2–16 characters'
+        errEl.textContent = 'Name must be 2-16 characters'
         return
       }
       errEl.textContent = 'Saving...'
-      const { error } = await sb.from('players').insert({ wallet_address: walletAddress, username: val })
-      if (error) {
-        errEl.textContent = 'Error saving — try again'
-        return
+      if (sb) {
+        const { error } = await sb.from('players').insert({ wallet_address: walletAddress, username: val })
+        if (error) {
+          errEl.textContent = 'Error saving — try again'
+          return
+        }
       }
       walletUsername = val
       proceedToGame()
@@ -791,6 +860,7 @@
 
     function playAsGuest() {
       isGuest = true
+      walletUsername = 'Guest_' + Math.random().toString(36).substring(2, 6).toUpperCase()
       proceedToGame()
     }
 
@@ -835,25 +905,20 @@
   <script src="index.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script>
-    // Runs immediately — DOM ready, all scripts (including Supabase) already loaded.
-    // No window.load needed; that event fires only after all images/audio download
-    // which can take 10-30s on Vercel, causing the splash click to be silently missed.
-    try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY) } catch(e) {}
     const _audio = document.getElementById('splashAudio')
     const _splash = document.getElementById('splashScreen')
     document.querySelector('.hud').style.visibility = 'hidden'
 
     let _advanced = false
-    function showWallet() {
+    async function showWallet() {
       if (_advanced) return
       _advanced = true
       _splash.style.display = 'none'
+      await initSupabase()
       document.getElementById('walletScreen').style.display = 'flex'
     }
 
-    // Auto-advance after 2s — no click or audio required
     setTimeout(showWallet, 2000)
-    // Click fast-forwards
     _splash.addEventListener('click', showWallet, { once: true })
   </script>
 </body>
