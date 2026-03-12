@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DEATH WARS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Press Start 2P', cursive;
+    }
+
+    body {
+      background: #0a0a0f;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    /* ── Game Title ──────────────────────────────────── */
+    .game-title {
+      color: #c8a84b;
+      font-size: 26px;
+      letter-spacing: 6px;
+      text-shadow: 0 0 20px #c8a84b, 0 0 40px #c8a84b88;
+      margin-bottom: 10px;
+      user-select: none;
+    }
+
+    /* ── HUD (health bars + timer) ───────────────────── */
+    .hud {
+      display: flex;
+      width: 1024px;
+      align-items: center;
+      padding: 8px 16px;
+      gap: 10px;
+    }
+
+    .hud-side {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .hud-side.right { align-items: flex-end; }
+
+    .player-label {
+      font-size: 7px;
+      color: #888;
+      letter-spacing: 1px;
+    }
+
+    .health-bar-outer {
+      position: relative;
+      width: 100%;
+      height: 20px;
+      border: 3px solid #444;
+      background: #1a1a1a;
+    }
+
+    .health-bar-bg {
+      position: absolute;
+      inset: 0;
+      background: #3a0000;
+    }
+
+    #playerHealth {
+      position: absolute;
+      top: 0; left: 0; bottom: 0;
+      width: 100%;
+      background: linear-gradient(90deg, #c0392b, #e74c3c);
+    }
+
+    #enemyHealth {
+      position: absolute;
+      top: 0; right: 0; bottom: 0;
+      width: 100%;
+      background: linear-gradient(270deg, #2471a3, #3498db);
+    }
+
+    .timer-box {
+      background: #0d0d14;
+      border: 3px solid #c8a84b;
+      color: #c8a84b;
+      font-size: 20px;
+      width: 58px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      text-shadow: 0 0 10px #c8a84b;
+    }
+
+    /* ── Canvas wrapper ──────────────────────────────── */
+    .canvas-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+
+    canvas { display: block; }
+
+    /* ── Winner text ─────────────────────────────────── */
+    #displayText {
+      position: absolute;
+      color: #c8a84b;
+      font-size: 26px;
+      text-shadow: 0 0 20px #c8a84b, 0 0 60px #c8a84b88;
+      letter-spacing: 4px;
+      align-items: center;
+      justify-content: center;
+      top: 0; right: 0; bottom: 0; left: 0;
+      display: none;
+      pointer-events: none;
+    }
+
+    /* ── Rematch button ───────────────────────────────── */
+    #rematchBtn {
+      display: none;
+      margin-top: 16px;
+      padding: 12px 28px;
+      background: transparent;
+      border: 3px solid #c8a84b;
+      color: #c8a84b;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 12px;
+      cursor: pointer;
+      letter-spacing: 2px;
+      text-shadow: 0 0 10px #c8a84b;
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+
+    #rematchBtn:hover {
+      background: #c8a84b22;
+      box-shadow: 0 0 20px #c8a84b66;
+    }
+
+    /* ── Countdown overlay ────────────────────────────── */
+    #countdownOverlay {
+      display: none;
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .countdown-text {
+      font-size: 80px;
+      color: #fff;
+      text-shadow: 0 0 30px #c8a84b, 0 0 80px #c8a84b88;
+      letter-spacing: 4px;
+      animation: countPulse 0.8s ease-out;
+    }
+
+    @keyframes countPulse {
+      from { transform: scale(1.6); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    /* ── Character Select Screen ─────────────────────── */
+    #selectScreen {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(160deg, #0a0a14 0%, #130920 60%, #0a0a0f 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      z-index: 10;
+    }
+
+    .select-title {
+      font-size: 10px;
+      color: #666;
+      letter-spacing: 3px;
+    }
+
+    .select-content-row {
+      display: flex;
+      align-items: flex-start;
+      width: 100%;
+    }
+
+    .select-left {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .select-divider {
+      width: 1px;
+      background: #1e1e30;
+      align-self: stretch;
+    }
+
+    .select-right {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .select-player-status {
+      font-size: 6px;
+      color: #666;
+      min-height: 16px;
+      letter-spacing: 1px;
+      text-align: center;
+      line-height: 1.6;
+    }
+
+    /* ── Character Grid ───────────────────────────────── */
+    #charGrid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .char-card {
+      border: 3px solid #252535;
+      background: #0e0e18;
+      padding: 10px 8px 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      width: 148px;
+      transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+    }
+
+    .char-card img {
+      width: 96px;
+      height: 112px;
+      object-fit: contain;
+      object-position: center bottom;
+    }
+
+    .char-name {
+      font-size: 7px;
+      color: #ddd;
+      letter-spacing: 1px;
+    }
+
+    .char-subtitle {
+      font-size: 5px;
+      color: #666;
+      letter-spacing: 1px;
+    }
+
+    .char-card.p1-hover  { border-color: #e74c3c66; background: #180808; }
+    .char-card.p2-hover  { border-color: #3498db66; background: #08101a; }
+
+    .char-card.p1-selected {
+      border-color: #e74c3c;
+      box-shadow: 0 0 14px #e74c3c88;
+      background: #200a0a;
+    }
+
+    .char-card.p2-selected {
+      border-color: #3498db;
+      box-shadow: 0 0 14px #3498db88;
+      background: #08141f;
+    }
+
+    .char-card.p1-selected.p2-selected {
+      border-color: #c8a84b;
+      box-shadow: 0 0 18px #c8a84b88;
+      background: #181008;
+    }
+
+    /* ── Background Selector ──────────────────────────── */
+    #bgSelector {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .bg-selector-label {
+      font-size: 7px;
+      color: #666;
+      letter-spacing: 3px;
+    }
+
+    #bgGrid {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .bg-card {
+      border: 3px solid #252535;
+      padding: 4px;
+      width: 192px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      background: #0e0e18;
+    }
+
+    .bg-card img {
+      width: 186px;
+      height: 105px;
+      object-fit: cover;
+    }
+
+    .bg-name {
+      font-size: 6px;
+      color: #aaa;
+      letter-spacing: 1px;
+    }
+
+    .bg-card.bg-selected {
+      border-color: #c8a84b;
+      box-shadow: 0 0 14px #c8a84b88;
+      background: #181008;
+    }
+
+    .bg-hint {
+      font-size: 5px;
+      color: #444;
+      letter-spacing: 1px;
+    }
+
+    /* ── Controls hint ────────────────────────────────── */
+    .controls-hint {
+      display: flex;
+      gap: 48px;
+    }
+
+    .hint-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .hint-label {
+      font-size: 7px;
+      letter-spacing: 1px;
+    }
+
+    .hint-label.p1 { color: #e74c3c; }
+    .hint-label.p2 { color: #3498db; }
+
+    .hint-keys {
+      font-size: 6px;
+      color: #555;
+      letter-spacing: 1px;
+      line-height: 2;
+      text-align: center;
+    }
+
+    /* ── Wallet / Username Screen ─────────────────────── */
+    #walletScreen, #usernameScreen {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(160deg, #060610 0%, #0e0620 55%, #060610 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      z-index: 25;
+    }
+
+    .wallet-title {
+      font-size: 18px;
+      color: #c8a84b;
+      text-shadow: 0 0 20px #c8a84b, 0 0 50px #c8a84b66;
+      letter-spacing: 5px;
+    }
+
+    .wallet-sub { font-size: 7px; color: #555; letter-spacing: 3px; }
+
+    .wallet-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .wallet-btn {
+      background: transparent;
+      border: 3px solid #333;
+      color: #666;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 9px;
+      padding: 12px 32px;
+      cursor: pointer;
+      letter-spacing: 2px;
+      transition: all 0.2s;
+      min-width: 240px;
+    }
+
+    .wallet-btn:hover { border-color: #555; color: #999; }
+    .wallet-btn.primary { border-color: #c8a84b88; color: #c8a84b; }
+    .wallet-btn.primary:hover { border-color: #c8a84b; box-shadow: 0 0 20px #c8a84b44; }
+
+    .wallet-status {
+      font-size: 6px;
+      color: #e74c3c;
+      letter-spacing: 1px;
+      min-height: 14px;
+      text-align: center;
+    }
+
+    .username-input {
+      background: #0e0e18;
+      border: 3px solid #333;
+      color: #ddd;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 9px;
+      padding: 10px 16px;
+      letter-spacing: 2px;
+      outline: none;
+      width: 280px;
+      text-align: center;
+    }
+
+    .username-input:focus { border-color: #c8a84b88; }
+
+    /* ── Leaderboard Screen ────────────────────────────── */
+    #leaderboardScreen {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(160deg, #060610 0%, #0e0620 55%, #060610 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      z-index: 15;
+    }
+
+    #leaderboardList { display: flex; flex-direction: column; gap: 6px; width: 420px; }
+
+    .lb-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 7px;
+      padding: 8px 12px;
+      border: 1px solid #1e1e30;
+      background: #0e0e18;
+    }
+
+    .lb-rank   { color: #c8a84b; width: 28px; flex-shrink: 0; }
+    .lb-name   { color: #ddd; flex: 1; }
+    .lb-wins   { color: #e74c3c; width: 48px; text-align: right; flex-shrink: 0; }
+    .lb-losses { color: #3498db; width: 48px; text-align: right; flex-shrink: 0; }
+
+    .intro-lb-btn {
+      font-size: 6px;
+      color: #444;
+      letter-spacing: 2px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-family: 'Press Start 2P', cursive;
+      padding: 4px 0;
+      margin-top: 4px;
+    }
+
+    .intro-lb-btn:hover { color: #888; }
+
+    /* ── Splash Screen ────────────────────────────────── */
+    #splashScreen {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 30;
+    }
+
+    #splashImg {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    /* ── Intro Screen ─────────────────────────────────── */
+    #introScreen {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(160deg, #060610 0%, #0e0620 55%, #060610 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 40px;
+      z-index: 20;
+    }
+
+    .intro-left {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      height: 260px;
+    }
+
+    #introChar {
+      width: 180px;
+      object-fit: contain;
+      object-position: center bottom;
+      animation: introFloat 2.2s ease-in-out infinite;
+      filter: drop-shadow(0 0 18px #c8a84b55);
+    }
+
+    @keyframes introFloat {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-18px); }
+    }
+
+    .intro-right {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      max-width: 320px;
+    }
+
+    .intro-title {
+      font-size: 22px;
+      color: #c8a84b;
+      text-shadow: 0 0 20px #c8a84b, 0 0 50px #c8a84b66;
+      letter-spacing: 5px;
+      line-height: 1.4;
+    }
+
+    .intro-subtitle {
+      font-size: 7px;
+      color: #555;
+      letter-spacing: 3px;
+    }
+
+    .intro-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      border-top: 1px solid #1e1e30;
+      border-bottom: 1px solid #1e1e30;
+      padding: 14px 0;
+    }
+
+    .ctrl-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 7px;
+      color: #888;
+      letter-spacing: 1px;
+    }
+
+    .ctrl-key {
+      border: 2px solid #c8a84b88;
+      color: #c8a84b;
+      font-size: 6px;
+      padding: 3px 7px;
+      letter-spacing: 1px;
+      min-width: 64px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .intro-press {
+      font-size: 7px;
+      color: #c8a84b;
+      letter-spacing: 3px;
+      animation: introBlink 1.2s ease-in-out infinite;
+    }
+
+    @keyframes introBlink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.2; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="game-title">&#9760; DEATH WARS &#9760;</div>
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="hud-side">
+      <div class="player-label" id="p1Label">PLAYER 1</div>
+      <div class="health-bar-outer">
+        <div class="health-bar-bg"></div>
+        <div id="playerHealth"></div>
+      </div>
+    </div>
+
+    <div class="timer-box" id="timer">60</div>
+
+    <div class="hud-side right">
+      <div class="player-label" id="p2Label">PLAYER 2</div>
+      <div class="health-bar-outer">
+        <div class="health-bar-bg"></div>
+        <div id="enemyHealth"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Canvas + Overlays -->
+  <div class="canvas-wrapper">
+    <canvas></canvas>
+
+    <!-- Splash Screen -->
+    <div id="splashScreen" style="cursor:pointer; flex-direction:column; gap:12px">
+      <img id="splashImg" src="./img/intro-image.png" alt="" />
+      <div id="splashClickHint" style="font-size:8px; color:#c8a84b88; letter-spacing:3px; animation:introBlink 1.2s ease-in-out infinite">CLICK TO START</div>
+      <audio id="splashAudio" src="./audio/intro-sound.mp3"></audio>
+    </div>
+
+    <!-- Wallet Screen -->
+    <div id="walletScreen" style="display:none">
+      <div class="wallet-title">&#9760; DEATH WARS &#9760;</div>
+      <div class="wallet-sub">— connect your wallet to compete —</div>
+      <div class="wallet-btns">
+        <button class="wallet-btn primary" onclick="connectWallet()">CONNECT WALLET</button>
+        <button class="wallet-btn" onclick="playAsGuest()">PLAY AS GUEST</button>
+      </div>
+      <div id="walletStatus" class="wallet-status"></div>
+    </div>
+
+    <!-- Username Screen -->
+    <div id="usernameScreen" style="display:none">
+      <div class="wallet-title">CHOOSE YOUR NAME</div>
+      <div class="wallet-sub">— shown on the leaderboard —</div>
+      <input id="usernameInput" class="username-input" placeholder="2–16 characters" maxlength="16"
+        onkeydown="if(event.key==='Enter') submitUsername()" />
+      <button class="wallet-btn primary" onclick="submitUsername()">CONFIRM</button>
+      <div id="usernameError" class="wallet-status"></div>
+    </div>
+
+    <!-- Leaderboard Screen -->
+    <div id="leaderboardScreen" style="display:none">
+      <div class="select-title">— LEADERBOARD —</div>
+      <div id="leaderboardList"></div>
+      <button class="wallet-btn" style="margin-top:8px" onclick="closeLeaderboard()">CLOSE</button>
+    </div>
+
+    <!-- Intro / Preview -->
+    <div id="introScreen" style="display:none">
+      <div class="intro-left">
+        <img id="introChar" src="./img/death_adventure_time_updated-removebg-preview.png" alt="Death" />
+      </div>
+      <div class="intro-right">
+        <div class="intro-title">&#9760; DEATH WARS &#9760;</div>
+        <div class="intro-subtitle">— choose your champion —</div>
+        <div class="intro-controls">
+          <div class="ctrl-row"><span class="ctrl-key">A &nbsp;/&nbsp; D</span> Move</div>
+          <div class="ctrl-row"><span class="ctrl-key">W</span> Jump</div>
+          <div class="ctrl-row"><span class="ctrl-key">SPACE</span> Attack</div>
+          <div class="ctrl-row"><span class="ctrl-key">ENTER</span> Confirm selection</div>
+        </div>
+        <div class="intro-press">PRESS ENTER TO PLAY</div>
+        <button class="intro-lb-btn" onclick="openLeaderboard()">LEADERBOARD</button>
+      </div>
+    </div>
+
+    <!-- Character Select -->
+    <div id="selectScreen" style="display:none">
+      <div class="select-title">— choose your fighter —</div>
+
+      <div class="select-content-row">
+        <div class="select-left">
+          <div id="charGrid"></div>
+          <div id="p1Status" class="select-player-status">Choose your fighter</div>
+        </div>
+
+        <div class="select-divider"></div>
+
+        <div class="select-right">
+          <div class="bg-selector-label">— STAGE —</div>
+          <div id="bgGrid"></div>
+        </div>
+      </div>
+
+      <!-- hidden, kept for P2 logic -->
+      <div id="p2Status" style="display:none"></div>
+
+      <div class="controls-hint">
+        <div class="hint-block">
+          <div class="hint-label p1">CONTROLS</div>
+          <div class="hint-keys">A / D &mdash; navigate &nbsp;&middot;&nbsp; ENTER &mdash; confirm &nbsp;&middot;&nbsp; W / S &mdash; cycle stage</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Countdown -->
+    <div id="countdownOverlay">
+      <div class="countdown-text">3</div>
+    </div>
+
+    <!-- Winner -->
+    <div id="displayText" style="display:none; position:absolute; top:0; right:0; bottom:0; left:0; align-items:center; justify-content:center; flex-direction:column; gap:20px; color:#c8a84b; font-size:26px; text-shadow:0 0 20px #c8a84b; letter-spacing:4px;">
+      Tie
+    </div>
+  </div>
+
+  <!-- Rematch -->
+  <button id="rematchBtn" onclick="resetGame()">REMATCH</button>
+
+  <audio id="gameSoundtrack" src="./audio/game-soundtrack.mp3" loop></audio>
+
+  <script>
+    const SUPABASE_URL = 'https://oabxbnwlylwybyrivudq.supabase.co'
+    const SUPABASE_KEY = 'sb_publishable_gtVXMXEqX4f3jbxiKaOvOw_qJLLLi59'
+    let sb
+
+    const _clickCtx = new (window.AudioContext || window.webkitAudioContext)()
+    function playClick() {
+      const ctx = _clickCtx
+      if (ctx.state === 'suspended') ctx.resume()
+      const buf = ctx.createBuffer(1, ctx.sampleRate * 0.04, ctx.sampleRate)
+      const data = buf.getChannelData(0)
+      for (let i = 0; i < data.length; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 8)
+      }
+      const src = ctx.createBufferSource()
+      src.buffer = buf
+      const gain = ctx.createGain()
+      gain.gain.setValueAtTime(1.2, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04)
+      src.connect(gain)
+      gain.connect(ctx.destination)
+      src.start()
+    }
+
+    async function connectWallet() {
+      const statusEl = document.getElementById('walletStatus')
+      const provider = window.phantom?.solana || window.solana
+      if (!provider?.isPhantom) {
+        statusEl.textContent = 'Phantom not found — install at phantom.app'
+        return
+      }
+      statusEl.textContent = 'Connecting...'
+      try {
+        const resp = await provider.connect()
+        const addr = resp.publicKey.toString()
+        const { data } = await sb.from('players').select('username').eq('wallet_address', addr).maybeSingle()
+        if (data) {
+          walletAddress = addr
+          walletUsername = data.username
+          proceedToGame()
+        } else {
+          walletAddress = addr
+          statusEl.textContent = ''
+          document.getElementById('walletScreen').style.display = 'none'
+          document.getElementById('usernameScreen').style.display = 'flex'
+          setTimeout(() => document.getElementById('usernameInput').focus(), 50)
+        }
+      } catch(e) {
+        statusEl.textContent = 'Connection cancelled'
+      }
+    }
+
+    async function submitUsername() {
+      const val = document.getElementById('usernameInput').value.trim()
+      const errEl = document.getElementById('usernameError')
+      if (val.length < 2 || val.length > 16) {
+        errEl.textContent = 'Name must be 2–16 characters'
+        return
+      }
+      errEl.textContent = 'Saving...'
+      const { error } = await sb.from('players').insert({ wallet_address: walletAddress, username: val })
+      if (error) {
+        errEl.textContent = 'Error saving — try again'
+        return
+      }
+      walletUsername = val
+      proceedToGame()
+    }
+
+    function playAsGuest() {
+      isGuest = true
+      proceedToGame()
+    }
+
+    function proceedToGame() {
+      document.getElementById('walletScreen').style.display = 'none'
+      document.getElementById('usernameScreen').style.display = 'none'
+      document.getElementById('introScreen').style.display = 'flex'
+      gameState = 'intro'
+    }
+
+    async function openLeaderboard() {
+      const screen = document.getElementById('leaderboardScreen')
+      const list = document.getElementById('leaderboardList')
+      screen.style.display = 'flex'
+      if (!sb) {
+        list.innerHTML = '<div style="font-size:7px;color:#555;letter-spacing:1px">Leaderboard unavailable</div>'
+        return
+      }
+      list.innerHTML = '<div style="font-size:7px;color:#555;letter-spacing:1px">Loading...</div>'
+      const { data } = await sb.from('players').select('username,wins,losses').order('wins', { ascending: false }).limit(10)
+      if (!data || data.length === 0) {
+        list.innerHTML = '<div style="font-size:7px;color:#555;letter-spacing:1px">No players yet</div>'
+        return
+      }
+      list.innerHTML = data.map((p, i) => `
+        <div class="lb-row">
+          <span class="lb-rank">#${i + 1}</span>
+          <span class="lb-name">${p.username}</span>
+          <span class="lb-wins">${p.wins}W</span>
+          <span class="lb-losses">${p.losses}L</span>
+        </div>`).join('')
+    }
+
+    function closeLeaderboard() {
+      document.getElementById('leaderboardScreen').style.display = 'none'
+    }
+
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/classes.js"></script>
+  <script src="index.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script>
+    // Runs immediately — DOM ready, all scripts (including Supabase) already loaded.
+    // No window.load needed; that event fires only after all images/audio download
+    // which can take 10-30s on Vercel, causing the splash click to be silently missed.
+    try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY) } catch(e) {}
+    const _audio = document.getElementById('splashAudio')
+    const _splash = document.getElementById('splashScreen')
+    document.querySelector('.hud').style.visibility = 'hidden'
+
+    let _advanced = false
+    function showWallet() {
+      if (_advanced) return
+      _advanced = true
+      _splash.style.display = 'none'
+      document.getElementById('walletScreen').style.display = 'flex'
+    }
+
+    // Auto-advance after 2s — no click or audio required
+    setTimeout(showWallet, 2000)
+    // Click fast-forwards
+    _splash.addEventListener('click', showWallet, { once: true })
+  </script>
+</body>
+</html>
