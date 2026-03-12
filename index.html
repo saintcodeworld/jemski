@@ -22,25 +22,36 @@
       align-items: center;
       justify-content: center;
       min-height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
     }
 
     /* ── Game Title ──────────────────────────────────── */
     .game-title {
       color: #c8a84b;
-      font-size: 26px;
+      font-size: clamp(16px, 3vw, 26px);
       letter-spacing: 6px;
       text-shadow: 0 0 20px #c8a84b, 0 0 40px #c8a84b88;
       margin-bottom: 10px;
       user-select: none;
+      position: absolute;
+      top: 10px;
+      z-index: 100;
     }
 
     /* ── HUD (health bars + timer) ───────────────────── */
     .hud {
       display: flex;
-      width: 1024px;
+      width: 100vw;
+      max-width: 100%;
       align-items: center;
       padding: 8px 16px;
       gap: 10px;
+      position: absolute;
+      top: 50px;
+      z-index: 100;
     }
 
     .hud-side {
@@ -102,11 +113,22 @@
 
     /* ── Canvas wrapper ──────────────────────────────── */
     .canvas-wrapper {
-      position: relative;
-      display: inline-block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
-    canvas { display: block; }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      object-fit: cover;
+    }
 
     /* ── Winner text ─────────────────────────────────── */
     #displayText {
@@ -925,6 +947,7 @@
   <button id="rematchBtn" onclick="requestRematch()">REMATCH</button>
 
   <audio id="gameSoundtrack" src="./audio/game-soundtrack.mp3" loop></audio>
+  <audio id="bgMusic" src="./audio/intro-sound.mp3" loop></audio>
 
   <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
   <script>
@@ -1074,6 +1097,7 @@
   <script>
     const _audio = document.getElementById('splashAudio')
     const _splash = document.getElementById('splashScreen')
+    const _bgMusic = document.getElementById('bgMusic')
     document.querySelector('.hud').style.visibility = 'hidden'
 
     let _advanced = false
@@ -1081,12 +1105,22 @@
       if (_advanced) return
       _advanced = true
       _splash.style.display = 'none'
+      
+      // Start background music on first interaction
+      _bgMusic.volume = 0.3
+      _bgMusic.play().catch(e => console.log('Audio autoplay blocked'))
+      
       await initSupabase()
       document.getElementById('walletScreen').style.display = 'flex'
     }
 
     setTimeout(showWallet, 2000)
-    _splash.addEventListener('click', showWallet, { once: true })
+    _splash.addEventListener('click', () => {
+      // Play background music on click
+      _bgMusic.volume = 0.3
+      _bgMusic.play().catch(e => console.log('Audio blocked'))
+      showWallet()
+    }, { once: true })
   </script>
 </body>
 </html>
